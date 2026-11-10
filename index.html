@@ -162,6 +162,11 @@ input[type=color]{width:100%;height:38px;border:1px solid var(--line);border-rad
 .memo-item{display:flex;gap:8px;align-items:flex-start;padding-block:10px;border-bottom:1px solid var(--line)}
 .memo-item p{margin:0;flex:1;white-space:pre-wrap;word-break:break-word}
 
+.codebig{font-size:22px;font-weight:700;letter-spacing:.06em;user-select:all}
+.wel h1{font-size:24px;margin:8px 0 2px;text-wrap:balance}
+.wel h3{font-size:15px;margin:18px 0 8px}
+.wel .opt{padding:10px 14px;border-radius:12px;border:1px solid var(--line);text-align:left}
+.wel .opt.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;z-index:50;max-width:90%}
 </style>
 </head>
@@ -218,18 +223,77 @@ function defaults() {
     ],
     attendTypes: [{ id: "a1", name: "연차" }, { id: "a2", name: "반차" }],
     pattern: { seq: ["d", "n", "o", "r"], anchor: "2026-11-08", teams: ["A조", "B조", "C조", "D조"], step: 1, myTeam: 0 },
-    overrides: { "2026-11-26": "e" },
+    overrides: {},
     attend: {}, memos: {}, monthMemo: {},
     otRates: [{ name: "오버타임1", rate: 10000, color: "#4f7cff" }, { name: "오버타임2", rate: 15000, color: "#ef5a1a" }],
     ot: {}, extras: {},
     payday: 25,
-    anniv: [{ date: "11-09", name: "소방의날", red: false }],
+    anniv: [],
     autoHoliday: true
   };
 }
-let S;
-try { S = Object.assign(defaults(), JSON.parse(localStorage.getItem(STORE) || "null") || {}); } catch (e) { S = defaults(); }
-function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { toast("저장 공간에 쓸 수 없어요 (사파리 개인정보 보호 모드?)"); } }
+let S, fresh = false;
+try { const raw = localStorage.getItem(STORE); fresh = !raw; S = Object.assign(defaults(), JSON.parse(raw || "null") || {}); } catch (e) { S = defaults(); fresh = true; }
+function save(opts) {
+  if (!(opts && opts.keepTime)) S._t = Date.now();
+  try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { toast("저장 공간에 쓸 수 없어요 (사파리 개인정보 보호 모드?)"); }
+  if (!(opts && opts.local)) schedulePush();
+}
+
+/* ---------- personal code sync ----------
+   Fill in your Supabase project URL and anon (public) key to turn on code sync.
+   Run supabase.sql once in the Supabase SQL editor first. */
+const SYNC = { url: "", key: "" };
+const syncOn = () => !!(SYNC.url && SYNC.key);
+const CODE_KEY = "myoff.code";
+let myCode = null, syncMsg = "", pushT = null;
+try { myCode = localStorage.getItem(CODE_KEY); } catch (e) {}
+function setCode(c) { myCode = c; try { c ? localStorage.setItem(CODE_KEY, c) : localStorage.removeItem(CODE_KEY); } catch (e) {} }
+function newCode() {
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = crypto.getRandomValues(new Uint8Array(12));
+  let out = ""; b.forEach(x => out += A[x % 32]); return out.match(/.{4}/g).join("-");
+}
+function normCode(t) {
+  const c = String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return /^[A-HJ-NP-Z2-9]{12}$/.test(c) ? c.match(/.{4}/g).join("-") : null;
+}
+async function rpc(fn, body) {
+  const r = await fetch(`${SYNC.url.replace(/\/$/, "")}/rest/v1/rpc/${fn}`, {
+    method: "POST", headers: { apikey: SYNC.key, Authorization: `Bearer ${SYNC.key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+function schedulePush() {
+  if (!syncOn() || !myCode) return;
+  clearTimeout(pushT); pushT = setTimeout(pushNow, 1200);
+}
+async function pushNow() {
+  if (!syncOn() || !myCode) return;
+  try { await rpc("save_calendar", { p_code: myCode, p_data: S }); const t = new Date(); syncMsg = `서버에 저장됨 ${pad(t.getHours())}:${pad(t.getMinutes())}`; }
+  catch (e) { syncMsg = "오프라인이라 이 기기에만 저장됨 (연결되면 다시 올려요)"; }
+  const el = $("#syncMsg"); if (el) el.textContent = syncMsg;
+}
+async function pullNow(showToast) {
+  if (!syncOn() || !myCode) return;
+  try {
+    const d = await rpc("get_calendar", { p_code: myCode });
+    if (d && (d._t || 0) > (S._t || 0)) { S = Object.assign(defaults(), d); save({ keepTime: true, local: true }); render(); if (showToast) toast("다른 기기의 변경을 불러왔어요"); }
+    else if (!d || (d._t || 0) < (S._t || 0)) pushNow();
+  } catch (e) { syncMsg = "서버에 연결하지 못했어요. 이 기기 데이터로 계속 써요"; }
+}
+async function loadByCode(code) {
+  const c = normCode(code); if (!c) return toast("코드는 영문·숫자 12자리예요 (예: AB3D-7KQX-9MPZ)");
+  try {
+    const d = await rpc("get_calendar", { p_code: c });
+    if (!d) return toast("그 코드로 저장된 달력이 없어요. 철자를 확인하세요");
+    setCode(c); S = Object.assign(defaults(), d); save({ keepTime: true, local: true }); closeWelcome(); render(); toast("내 달력을 불러왔어요");
+  } catch (e) { toast("서버에 연결하지 못했어요. 인터넷 연결을 확인하세요"); }
+}
+function issueCode() { setCode(newCode()); pushNow(); }
+window.addEventListener("online", () => pushNow());
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pullNow(true); });
 
 let cur = (() => { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() }; })();
 let view = "cal";
@@ -422,6 +486,14 @@ function statsView() {
 function setView() {
   const P = S.pattern;
   return `
+  <div class="sec"><h2>내 코드 <small>다른 기기에서 같은 달력 쓰기</small></h2><div class="card">
+    ${!syncOn() ? '<div class="row muted">서버가 아직 연결되지 않아 이 기기에만 저장돼요. 기기를 옮길 땐 아래 백업을 쓰세요.</div>' : myCode ? `
+    <div class="row"><span class="grow"><span class="codebig num">${myCode}</span><br><span class="muted" id="syncMsg">${esc(syncMsg || "코드를 다른 기기에 입력하면 같은 달력이 열려요")}</span></span><button class="btn ghost" id="codeCopy">복사</button></div>
+    <div class="row muted">코드가 비밀번호 역할을 해요. 남에게 알려주면 내 달력을 보고 고칠 수 있어요.</div>` : `
+    <div class="row"><span class="grow muted">아직 코드가 없어요</span><button class="btn" id="codeIssue">코드 발급</button></div>`}
+    ${syncOn() ? `<div class="row"><input type="text" id="codeIn" placeholder="다른 코드로 불러오기" autocapitalize="characters" class="grow"><button class="btn ghost" id="codeLoad">불러오기</button></div>` : ""}
+  </div></div>
+
   <div class="sec"><h2>근무 타입 <small>이름·색·시간·수당</small></h2><div class="card" id="shiftList">
     ${S.shifts.map((s, i) => `<div class="se" data-i="${i}">
       ${badge(s)}
@@ -549,6 +621,9 @@ function settingsClick(e) {
     return;
   }
   else if (b.id === "bkApply") return importData($("#bkText").value);
+  else if (b.id === "codeIssue") issueCode();
+  else if (b.id === "codeLoad") return loadByCode($("#codeIn").value);
+  else if (b.id === "codeCopy") { navigator.clipboard?.writeText(myCode).then(() => toast("코드를 복사했어요"), () => toast("코드를 길게 눌러 복사하세요")); return; }
   else if (b.id === "resetBtn") { if (!confirmTap(b, "reset", "정말 초기화?")) return; S = defaults(); toast("초기화했어요"); }
   else return;
   save(); render();
@@ -622,6 +697,7 @@ function bindSheet() {
   }));
 }
 $("#sheet").addEventListener("click", e => {
+  if (!sel) return;
   const b = e.target.closest("button"); if (!b) return;
   const k = sel;
   if (b.dataset.nav) { sel = fromNum(dnum(sel) + +b.dataset.nav); return renderSheet(); }
@@ -660,7 +736,52 @@ $("#main").addEventListener("touchend", e => {
 let toastT;
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
 
+/* ---------- first-run welcome ---------- */
+const PRESETS = {
+  "4x2": { label: "4조 2교대 (주·야·비·휴)", seq: ["d", "n", "o", "r"], teams: ["A조", "B조", "C조", "D조"] },
+  "3x2": { label: "3조 2교대 (주·야·비)", seq: ["d", "n", "o"], teams: ["A조", "B조", "C조"] },
+  "custom": { label: "직접 설정 (나중에 설정 탭에서)", seq: null }
+};
+let W = { preset: "4x2", team: 0, today: "d" };
+function openWelcome() { $("#scrim").hidden = false; renderWelcome(); }
+function closeWelcome() { $("#scrim").hidden = true; }
+function renderWelcome() {
+  const pr = PRESETS[W.preset], seq = pr.seq || S.pattern.seq, teams = pr.teams || S.pattern.teams;
+  $("#sheet").innerHTML = `<div class="grab"></div><div class="sbody gut wel">
+    <h1>교대달력 시작하기</h1><p class="muted">세 가지만 고르면 1년치 근무가 자동으로 채워져요.</p>
+    <h3>1. 근무 형태</h3><div class="btns">${Object.entries(PRESETS).map(([k, p]) => `<button class="opt ${W.preset === k ? "on" : ""}" data-wp="${k}">${p.label}</button>`).join("")}</div>
+    ${pr.seq ? `<h3>2. 내 조</h3><div class="btns">${teams.map((t, i) => `<button class="opt ${W.team === i ? "on" : ""}" data-wt="${i}">${esc(t)}</button>`).join("")}</div>
+    <h3>3. 오늘 내 근무</h3><div class="pick">${seq.map(id => shiftById(id)).filter(Boolean).map(s => `<button data-wd="${s.id}" class="${W.today === s.id ? "on" : ""}">${badge(s, "lg")}</button>`).join("")}</div>` : ""}
+    <div class="btns" style="margin-top:18px"><button class="btn" id="wStart">시작하기</button></div>
+    ${syncOn() ? `<h3>다른 기기에서 쓰던 코드가 있나요?</h3><div class="row"><input type="text" id="wCode" placeholder="AB3D-7KQX-9MPZ" autocapitalize="characters" class="grow"><button class="btn ghost" id="wLoad">불러오기</button></div>` : ""}
+  </div>`;
+}
+$("#sheet").addEventListener("click", e => {
+  if (sel) return;
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.wp) { W.preset = b.dataset.wp; W.team = 0; const sq = PRESETS[W.preset].seq; if (sq) W.today = sq[0]; }
+  else if (b.dataset.wt) W.team = +b.dataset.wt;
+  else if (b.dataset.wd) W.today = b.dataset.wd;
+  else if (b.id === "wLoad") return loadByCode($("#wCode").value);
+  else if (b.id === "wStart") {
+    const pr = PRESETS[W.preset], P = S.pattern;
+    if (pr.seq) {
+      P.seq = pr.seq.slice(); P.teams = pr.teams.slice(); P.step = 1; P.myTeam = W.team;
+      const j = Math.max(0, P.seq.indexOf(W.today));
+      P.anchor = fromNum(dnum(todayKey()) - j + W.team * P.step);   // so my team has W.today today
+    }
+    save(); if (syncOn() && !myCode) issueCode();
+    closeWelcome(); render();
+    if (syncOn()) { view = "set"; render(); toast("내 코드가 발급됐어요. 설정에서 확인하세요"); }
+    if (!pr.seq) { view = "set"; render(); }
+    return;
+  }
+  else return;
+  renderWelcome();
+});
+
 render();
+if (fresh) openWelcome(); else pullNow(false);
 if ("serviceWorker" in navigator && location.protocol === "https:" ) { navigator.serviceWorker.register("sw.js").catch(() => {}); }
 </script>
 </body>

@@ -9,6 +9,15 @@
 - **통계**: 월 예상 급여, 근무 횟수, 근무시간, 근태 일수
 - **설정**: 근무타입 편집(이름·색·모양·시간·수당·순서), 교대 패턴(순서·기준일·조 이름·조 간격·내 조), 오버타임 시급, 월급날, 기념일, 백업/복원
 
+## 처음 쓰는 사람
+링크를 열면 **근무 형태 → 내 조 → 오늘 내 근무** 세 가지만 고르면 끝. 계정 없이 각자 기기에 자기 달력이 저장됩니다.
+
+## 개인 코드 (기기 간 동기화, 선택)
+서버를 연결하면 시작할 때 `AB3D-7KQX-9MPZ` 같은 코드가 발급되고, 다른 폰·PC에서 코드만 입력하면 같은 달력이 열립니다. 코드가 곧 비밀번호입니다.
+1. [supabase.com](https://supabase.com) 무료 프로젝트 생성
+2. SQL Editor에서 `supabase.sql` 실행
+3. Project Settings → API의 **Project URL**과 **anon public key**를 `index.html`의 `const SYNC = { url: "", key: "" }`에 입력 (anon 키는 공개돼도 되는 키)
+
 ## 아이폰에서 쓰기
 1. GitHub 저장소 Settings → Pages → Branch 를 이 브랜치(또는 main)로 지정
 2. 사파리로 `https://<아이디>.github.io/myoff/` 접속 → 공유 → **홈 화면에 추가**
