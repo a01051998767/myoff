@@ -68,6 +68,12 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);background:var(--surface);border-radius:4px}
 .cell{min-height:84px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:3px 3px 4px;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0;position:relative}
 .cell:nth-child(7n){border-right:0}
+.grid.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid.g4 .cell{border-right:1px solid var(--line)}
+.grid.g4 .cell:nth-child(4n){border-right:0}
+.wk.g4{grid-template-columns:repeat(4,1fr);font-weight:700;font-size:13px;color:var(--fg)}
+.wdl{font-size:11px;color:var(--muted);margin-left:3px}
+.wdl.red{color:var(--sun)} .wdl.blue{color:var(--sat)}
 .cell.other{opacity:.35}
 .cell.full{background:var(--free-soft)}
 .cell.today{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -114,7 +120,7 @@ nav.tabs button[aria-current=true]{color:var(--accent)}
 .btn.ghost{background:var(--accent-soft);color:var(--accent)}
 .btn.warn{background:var(--sun);color:#fff}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
-input[type=text],input[type=number],select{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+input[type=text],input[type=number],input[type=date],select{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
 input[type=color]{width:46px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:2px;flex:none}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .two label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
@@ -124,18 +130,6 @@ ol.steps{margin:6px 0 4px;padding-left:20px;display:flex;flex-direction:column;g
 ol.steps li{padding-left:2px}
 code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--hatch);padding:1px 5px;border-radius:5px;word-break:break-all}
 
-/* summary */
-.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.kpi{background:var(--surface);border-radius:14px;padding:12px}
-.kpi b{display:block;font:700 24px/1.1 var(--f-num);font-variant-numeric:tabular-nums}
-.kpi span{font-size:12px;color:var(--muted)}
-.lrow{display:flex;align-items:center;gap:10px;padding-block:11px;border-bottom:1px solid var(--line);width:100%;text-align:left}
-.lrow:last-child{border-bottom:0}
-.lrow .d{width:62px;flex:none;font-weight:600}
-.lrow .d small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
-.lrow .s{display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0}
-.lrow .slot{font-size:12px;padding:1px 7px}
-.lrow .h{font:600 13px var(--f-num);color:var(--muted)}
 
 /* timeline */
 .tl{margin-top:4px}
@@ -186,7 +180,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--
   <main id="main"></main>
   <nav class="tabs gut" id="tabs">
     <button data-v="cal" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>달력</button>
-    <button data-v="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="17.5" r="1.2"/></svg>목록</button>
+    <button data-v="shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/></svg>교대</button>
     <button data-v="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>설정</button>
   </nav>
 </div>
@@ -227,6 +221,7 @@ function defaults() {
     minH: 4, qs: 0, qe: 9,
     allDay: "busy",                                     // all-day events: busy | ignore
     restWords: "휴무, 휴가, 연차, 휴일, 쉬는날, 비번, off",
+    shiftAnchor: "2026-10-31",                         // a day that is 주 (cycle 주·야·비·휴)
     demo: false
   };
 }
@@ -381,7 +376,7 @@ function srcLabel(src, cals) {
 /* ---------- loading the month ---------- */
 let loadSeq = 0;
 async function load(interactive) {
-  const days = monthDays(cur.y, cur.m), k0 = days[0], k1 = days[days.length - 1];
+  const [k0, k1] = viewRange();
   const tMin = midnight(k0), tMax = midnight(fromNum(dnum(k1) + 1));
   const seq = ++loadSeq;
   if (S.demo) { D = { range: [k0, k1], people: demoData(tMin, tMax), at: Date.now(), demo: true }; lastErr = ""; render(); return; }
@@ -503,7 +498,7 @@ function render() {
   dayCache.clear();
   renderHeader();
   const main = $("#main");
-  main.innerHTML = `<div class="view gut">${view === "cal" ? calView() : view === "list" ? listView() : setView()}</div>`;
+  main.innerHTML = `<div class="view gut">${view === "cal" ? calView() : view === "shift" ? shiftView() : setView()}</div>`;
   if (sel) renderSheet();
 }
 function setupCard() {
@@ -516,7 +511,7 @@ function setupCard() {
     <div class="btns"><button class="btn" data-act="connect">구글로 로그인</button></div></div>`;
   return "";
 }
-function cellHTML(k, inMonth) {
+function cellHTML(k, inMonth, wd) {
   const p = parse(k), w = dow(k), h = holiday(k), tk = todayKey(), c = dayCalc(k);
   const cls = ["cell"]; if (!inMonth) cls.push("other"); if (k === tk) cls.push("today");
   if (c && c.full) cls.push("full");
@@ -533,7 +528,7 @@ function cellHTML(k, inMonth) {
     return `<i class="pdot ${has && !q.rest.length ? "" : "off"}" style="background:${esc(pp.color)}" title="${esc(pp.name)}"></i>`;
   }).join("") : "";
   return `<button class="${cls.join(" ")}" data-k="${k}">
-    <span class="ctop"><span class="dn ${numCls}">${p.d}</span><span class="lab ${h && h.red ? "red" : ""}">${esc(h ? h.name : "")}</span></span>
+    <span class="ctop"><span class="dn ${numCls}">${p.d}</span>${wd ? `<span class="wdl ${numCls}">${WD[w]}</span>` : ""}<span class="lab ${h && h.red ? "red" : ""}">${esc(h ? h.name : "")}</span></span>
     <span class="cmid">${mid}</span>
     <span class="cbot">${dots}</span>
   </button>`;
@@ -542,6 +537,25 @@ function calView() {
   const days = monthDays(cur.y, cur.m);
   return `<div class="wk">${WD.map((d, i) => `<span class="s${i}">${d}</span>`).join("")}</div>
   <div class="grid" id="grid">${days.map(k => cellHTML(k, parse(k).m === cur.m)).join("")}</div>
+  ${setupCard()}
+  ${D ? legendCard() : ""}`;
+}
+const SHIFTS = ["주", "야", "비", "휴"], SHIFT_NAMES = ["주간", "야간", "비번", "휴무"];
+const mod = (a, n) => ((a % n) + n) % n;
+const shiftIdx = k => mod(dnum(k) - dnum(S.shiftAnchor || "2026-10-31"), 4);
+function shiftDays(y, m) {
+  const first = dnum(key(y, m, 1)), last = dnum(key(y, m, new Date(y, m + 1, 0).getDate()));
+  const start = first - shiftIdx(fromNum(first)), end = last + 3 - shiftIdx(fromNum(last));
+  return Array.from({ length: end - start + 1 }, (_, i) => fromNum(start + i));
+}
+function viewRange() {
+  const a = monthDays(cur.y, cur.m), b = shiftDays(cur.y, cur.m);
+  return [a[0] < b[0] ? a[0] : b[0], a[a.length - 1] > b[b.length - 1] ? a[a.length - 1] : b[b.length - 1]];
+}
+function shiftView() {
+  const days = shiftDays(cur.y, cur.m);
+  return `<div class="wk g4">${SHIFTS.map(x => `<span>${x}</span>`).join("")}</div>
+  <div class="grid g4">${days.map(k => cellHTML(k, parse(k).m === cur.m, true)).join("")}</div>
   ${setupCard()}
   ${D ? legendCard() : ""}`;
 }
@@ -555,25 +569,6 @@ function legendCard() {
     <div><span class="k">${dots}</span><span>그날 일정이 있는 사람 (${names})</span></div>
     <div><span class="k muted">🌙</span><span>밤 ${S.qs}시~아침 ${S.qe}시는 자는 시간이라 빼고 계산해요</span></div>
   </div>`;
-}
-function listView() {
-  const days = monthDays(cur.y, cur.m).filter(k => parse(k).m === cur.m);
-  if (!D) return setupCard() || `<div class="empty"><p class="muted" style="margin:0">일정을 불러오면 목록이 보여요.</p></div>`;
-  const rows = days.map(k => ({ k, c: dayCalc(k) })).filter(r => r.c.slots.length);
-  const fullN = rows.filter(r => r.c.full).length, tot = rows.reduce((s, r) => s + r.c.total, 0);
-  const hols = days.map(k => ({ k, h: holiday(k) })).filter(x => x.h && x.h.red);
-  return `<div class="kpis" style="margin-top:6px">
-    <div class="kpi"><b>${fullN}</b><span>같이 쉬는 날</span></div>
-    <div class="kpi"><b>${days.filter(k => dayCalc(k).work).length}</b><span>같이 일하는 날</span></div>
-    <div class="kpi"><b>${Math.round(tot / 60)}</b><span>같이 빈 시간(h)</span></div></div>
-  <div class="sec"><h2>${cur.m + 1}월 같이 쉬는 시간 <small>${pad(S.qs)}~${pad(S.qe)}시 제외</small></h2>
-  <div class="card">${rows.length ? rows.map(({ k, c }) => {
-    const p = parse(k), w = dow(k), h = holiday(k);
-    return `<button class="lrow" data-k="${k}"><span class="d ${(h && h.red) || w === 0 ? "red" : w === 6 ? "blue" : ""}">${p.m + 1}/${p.d} ${WD[w]}<small>${esc(h ? h.name : "")}</small></span>
-      <span class="s">${c.full ? `<span class="slot" style="background:var(--free);color:#fff">같이 쉼</span>` : ""}${c.slots.map(s => `<span class="slot">${slotLong(s)}</span>`).join("")}</span>
-      <span class="h">${hrs(c.total)}</span></button>`;
-  }).join("") : `<p class="muted">이번 달엔 같이 비는 ${S.minH}시간 이상이 없어요.</p>`}</div></div>
-  ${hols.length ? `<div class="sec"><h2>${cur.m + 1}월 공휴일</h2><div class="card">${hols.map(({ k, h }) => { const p = parse(k); return `<div class="row"><span class="num red" style="width:62px">${p.m + 1}/${p.d} ${WD[dow(k)]}</span><span class="grow">${esc(h.name)}</span></div>`; }).join("")}</div></div>` : ""}`;
 }
 function setView() {
   const cals = calList || [];
@@ -601,6 +596,11 @@ function setView() {
       <select data-p="${i}" data-pf="src" aria-label="${esc(p.name)} 일정 위치">${srcOpts(p)}</select>
     </div>`).join("")}
     <p class="muted" style="margin:4px 0 10px">${calList ? "엄지·도연이 따로 캘린더라면 그 캘린더를, 한 캘린더에 섞여 있다면 '제목에 이름 포함'을 고르세요." : "로그인하면 내 캘린더 목록이 여기 나와요."}</p>
+  </div></div>
+  <div class="sec"><h2>교대 기준 <small>주 → 야 → 비 → 휴</small></h2><div class="card">
+    <div class="row col"><label class="l" for="sa">'주간'인 날 하나 (예: 2026-10-31)</label>
+      <input type="date" id="sa" data-f="shiftAnchor" value="${esc(S.shiftAnchor)}"></div>
+    <p class="muted" style="margin:0 0 10px">오늘(${parse(todayKey()).m + 1}/${parse(todayKey()).d})은 <b>${SHIFT_NAMES[shiftIdx(todayKey())]}</b>으로 계산돼요.</p>
   </div></div>
   <div class="sec"><h2>쉬는 시간 기준</h2><div class="card">
     <div class="row two">
@@ -660,7 +660,7 @@ function renderSheet() {
   <div class="shead gut">
     <button class="ibtn" data-nav="-1" aria-label="전날"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="info">
-      <div class="sdate ${(h && h.red) || w === 0 ? "red" : w === 6 ? "blue" : ""}">${p.m + 1}월 ${pad(p.d)}일 ${WD[w]}요일</div>
+      <div class="sdate ${(h && h.red) || w === 0 ? "red" : w === 6 ? "blue" : ""}">${p.m + 1}월 ${pad(p.d)}일 ${WD[w]}요일 <span class="pill" style="font-size:13px;vertical-align:middle">${SHIFT_NAMES[shiftIdx(k)]}</span></div>
       <div class="muted">${h ? esc(h.name) + " · " : ""}${c ? (c.full ? "둘 다 일정 없는 날" : c.work ? "둘 다 일하는 날" : c.slots.length ? `같이 ${hrs(c.total)}` : "같이 비는 긴 시간 없음") : ""}</div>
     </div>
     <button class="ibtn" data-nav="1" aria-label="다음날"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -676,7 +676,7 @@ $("#sheet").addEventListener("click", e => {
   if (b.dataset.nav) {
     const nk = fromNum(dnum(sel) + +b.dataset.nav), np = parse(nk);
     sel = nk;
-    if (np.m !== cur.m || np.y !== cur.y) { const days = monthDays(cur.y, cur.m); if (!days.includes(nk)) { cur = { y: np.y, m: np.m }; render(); load(false); return; } }
+    if (np.m !== cur.m || np.y !== cur.y) { const [r0, r1] = viewRange(); if (nk < r0 || nk > r1) { cur = { y: np.y, m: np.m }; render(); load(false); return; } }
     renderSheet();
   }
 });
@@ -706,6 +706,7 @@ $("#main").addEventListener("change", e => {
     if (f === "minH") S.minH = Math.max(0.5, Math.min(24, parseFloat(t.value) || 4));
     else if (f === "qs" || f === "qe") S[f] = +t.value;
     else if (f === "clientId") S.clientId = t.value.trim() || DEFAULT_CLIENT_ID;
+    else if (f === "shiftAnchor") { if (/^\d{4}-\d{2}-\d{2}$/.test(t.value)) S.shiftAnchor = t.value; }
     else S[f] = t.value.trim();
     if (f === "clientId") { tok = null; localStorage.removeItem(TOK); calList = null; }
     save(); render(); return;
