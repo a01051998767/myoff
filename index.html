@@ -579,8 +579,8 @@ function viewRange() {
   const a = monthDays(cur.y, cur.m), b = shiftDays(cur.y, cur.m);
   return [a[0] < b[0] ? a[0] : b[0], a[a.length - 1] > b[b.length - 1] ? a[a.length - 1] : b[b.length - 1]];
 }
-/* ---------- week view (Sun–Sat, 09–24) ---------- */
-const W0 = 9 * 60, W1 = 1440, HH = 44, PPM = HH / 60;
+/* ---------- week view (Sun–Sat, 09–20) ---------- */
+const W0 = 9 * 60, W1 = 20 * 60, HH = 44, PPM = HH / 60;
 let wkStart = null;
 const sundayOf = k => fromNum(dnum(k) - dow(k));
 function setWeek(k) {           // returns true if the month (and so the loaded range) changed
@@ -609,7 +609,7 @@ function weekView() {
     const p = parse(k), w = dow(k), h = holiday(k), cls = (h && h.red) || w === 0 ? "red" : w === 6 ? "blue" : "";
     return `<button class="whd ${k === tk ? "today" : ""}" data-k="${k}"><small class="${cls}">${WD[w]}</small><b class="${cls}">${p.d}</b><span class="sh">${SHIFTS[shiftIdx(k)]}</span>${h ? `<em>${esc(h.name)}</em>` : ""}</button>`;
   }).join("");
-  const hours = Array.from({ length: 16 }, (_, i) => `<span style="top:${i * HH}px">${9 + i}</span>`).join("");
+  const hours = Array.from({ length: (W1 - W0) / 60 + 1 }, (_, i) => `<span style="top:${i * HH}px">${W0 / 60 + i}</span>`).join("");
   const cols = days.map(k => {
     const c = dayCalc(k); let inner = "";
     if (c) {
