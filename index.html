@@ -579,8 +579,8 @@ function viewRange() {
   const a = monthDays(cur.y, cur.m), b = shiftDays(cur.y, cur.m);
   return [a[0] < b[0] ? a[0] : b[0], a[a.length - 1] > b[b.length - 1] ? a[a.length - 1] : b[b.length - 1]];
 }
-/* ---------- week view (Sun–Sat, 09–20) ---------- */
-const W0 = 9 * 60, W1 = 20 * 60, HH = 44, PPM = HH / 60;
+/* ---------- week view (Sun–Sat, 09–21) ---------- */
+const W0 = 9 * 60, W1 = 21 * 60, HH = 44, PPM = HH / 60;
 let wkStart = null;
 const sundayOf = k => fromNum(dnum(k) - dow(k));
 function setWeek(k) {           // returns true if the month (and so the loaded range) changed
