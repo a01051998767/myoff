@@ -84,6 +84,25 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .cell.other{opacity:.35}
 .cell.full{background:var(--free-soft)}
 .cell.work{background:var(--work-soft)}
+/* week view */
+.wtitle{font-weight:700;font-size:15px;padding-block:2px 6px}
+.wh,.wb{display:grid;grid-template-columns:30px repeat(7,minmax(0,1fr))}
+.wh{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:4px}
+.whd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px 0;border-radius:8px;min-width:0}
+.whd b{font:700 16px/1.1 var(--f-num)}
+.whd small{font-size:11px;color:var(--muted)}
+.whd small.red{color:var(--sun)} .whd small.blue{color:var(--sat)}
+.whd .sh{font-size:11px;font-weight:700;padding:0 5px;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
+.whd em{font-style:normal;font-size:9px;color:var(--sun);max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.whd.today{background:var(--accent-soft)}
+.wb{background:var(--surface);margin-top:8px;border-radius:4px}
+.wt{position:relative}
+.wt span{position:absolute;right:5px;transform:translateY(-50%);font:500 10px var(--f-num);color:var(--muted)}
+.wc{position:relative;display:block;padding:0;border-left:1px solid var(--line);background-image:repeating-linear-gradient(to bottom,var(--line) 0 1px,transparent 1px 44px)}
+.wc.full{background-color:var(--free-soft)} .wc.work{background-color:var(--work-soft)}
+.wc i{position:absolute;overflow:hidden;font:600 9px/1.2 var(--f-text);font-style:normal;color:#fff;padding:2px;text-align:left;word-break:break-all;border-radius:4px}
+.wc i.wf{left:0;right:0;border-radius:0;background:var(--free-soft);border-top:2px solid var(--free);color:var(--free);font-family:var(--f-num);text-align:center}
+.wc.today{box-shadow:inset 0 0 0 2px var(--accent)}
 .cell.today{box-shadow:inset 0 0 0 2px var(--accent)}
 .ctop{display:flex;align-items:baseline;gap:2px;min-width:0}
 .dn{font:600 13px/1.2 var(--f-num);font-variant-numeric:tabular-nums}
@@ -106,7 +125,7 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .pdot.off{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--line)}
 
 /* bottom nav */
-nav.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:var(--surface);padding-block:6px 4px}
+nav.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--surface);padding-block:6px 4px}
 nav.tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:4px 0}
 nav.tabs button svg{width:24px;height:24px}
 nav.tabs button[aria-current=true]{color:var(--accent)}
@@ -187,6 +206,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--
   <main id="main"></main>
   <nav class="tabs gut" id="tabs">
     <button data-v="cal" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>달력</button>
+    <button data-v="week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9.2 10v10.5M14.8 10v10.5"/></svg>주력</button>
     <button data-v="shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/></svg>교대</button>
     <button data-v="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>설정</button>
   </nav>
@@ -505,7 +525,7 @@ function render() {
   dayCache.clear();
   renderHeader();
   const main = $("#main");
-  main.innerHTML = `<div class="view gut${view !== "set" ? " fit" : ""}">${view === "cal" ? calView() : view === "shift" ? shiftView() : setView()}</div>`;
+  main.innerHTML = `<div class="view gut${view === "cal" || view === "shift" ? " fit" : ""}">${view === "cal" ? calView() : view === "shift" ? shiftView() : view === "week" ? weekView() : setView()}</div>`;
   if (sel) renderSheet();
 }
 function setupCard() {
@@ -558,6 +578,57 @@ function shiftDays(y, m) {
 function viewRange() {
   const a = monthDays(cur.y, cur.m), b = shiftDays(cur.y, cur.m);
   return [a[0] < b[0] ? a[0] : b[0], a[a.length - 1] > b[b.length - 1] ? a[a.length - 1] : b[b.length - 1]];
+}
+/* ---------- week view (Sun–Sat, 09–24) ---------- */
+const W0 = 9 * 60, W1 = 1440, HH = 44, PPM = HH / 60;
+let wkStart = null;
+const sundayOf = k => fromNum(dnum(k) - dow(k));
+function setWeek(k) {           // returns true if the month (and so the loaded range) changed
+  wkStart = sundayOf(k);
+  const mid = parse(fromNum(dnum(wkStart) + 3));
+  if (mid.y !== cur.y || mid.m !== cur.m) { cur = { y: mid.y, m: mid.m }; D = null; return true; }
+  return false;
+}
+function enterWeek() {
+  if (wkStart) { const mid = parse(fromNum(dnum(wkStart) + 3)); if (mid.y === cur.y && mid.m === cur.m) return; }
+  const t = todayKey(), tp = parse(t);
+  if (tp.y === cur.y && tp.m === cur.m) { if (setWeek(t)) load(false); return; }
+  let st = sundayOf(key(cur.y, cur.m, 1));
+  if (parse(fromNum(dnum(st) + 3)).m !== cur.m) st = fromNum(dnum(st) + 7);
+  wkStart = st;
+}
+function shiftWeek(d) { const ch = setWeek(fromNum(dnum(wkStart) + 7 * d)); render(); if (ch) load(false); }
+function wblk(a, b, cls, style, text) {
+  a = Math.max(a, W0); b = Math.min(b, W1); if (b <= a) return "";
+  return `<i class="${cls}" style="top:${(a - W0) * PPM}px;height:${(b - a) * PPM}px;${style || ""}">${text || ""}</i>`;
+}
+function weekView() {
+  const days = Array.from({ length: 7 }, (_, i) => fromNum(dnum(wkStart) + i)), tk = todayKey();
+  const n = S.people.length, a0 = parse(days[0]), a6 = parse(days[6]);
+  const head = days.map(k => {
+    const p = parse(k), w = dow(k), h = holiday(k), cls = (h && h.red) || w === 0 ? "red" : w === 6 ? "blue" : "";
+    return `<button class="whd ${k === tk ? "today" : ""}" data-k="${k}"><small class="${cls}">${WD[w]}</small><b class="${cls}">${p.d}</b><span class="sh">${SHIFTS[shiftIdx(k)]}</span>${h ? `<em>${esc(h.name)}</em>` : ""}</button>`;
+  }).join("");
+  const hours = Array.from({ length: 16 }, (_, i) => `<span style="top:${i * HH}px">${9 + i}</span>`).join("");
+  const cols = days.map(k => {
+    const c = dayCalc(k); let inner = "";
+    if (c) {
+      inner += c.slots.map(sl => wblk(sl[0], sl[1], "wf", "", slotTxt(sl))).join("");
+      c.per.forEach((q, i) => {
+        const lane = `left:calc(${i * 100 / n}% + 1px);width:calc(${100 / n}% - 2px);background:${esc(S.people[i].color)};`;
+        q.list.forEach(e => {
+          if (e.free || e.rest) return;
+          if (e.all) { if (S.allDay === "busy") inner += wblk(0, 1440, "", lane + "opacity:.55", esc(e.t)); return; }
+          inner += wblk(e.a, e.b, "", lane, esc(e.t));
+        });
+      });
+    }
+    return `<button class="wc ${c && c.full ? "full" : ""} ${c && c.work ? "work" : ""} ${k === tk ? "today" : ""}" data-k="${k}" aria-label="${parse(k).m + 1}월 ${parse(k).d}일"></button>`.replace("></button>", `>${inner}</button>`);
+  }).join("");
+  return `<div class="wtitle">${a0.m + 1}월 ${a0.d}일 – ${a6.m !== a0.m ? a6.m + 1 + "월 " : ""}${a6.d}일</div>
+  <div class="wh"><span></span>${head}</div>
+  <div class="wb" style="height:${(W1 - W0) * PPM}px"><div class="wt">${hours}</div>${cols}</div>
+  ${setupCard()}`;
 }
 function shiftView() {
   const days = shiftDays(cur.y, cur.m);
@@ -724,18 +795,18 @@ $("#main").addEventListener("change", e => {
 
 /* ---------- navigation ---------- */
 function shiftMonth(d) { const t = new Date(cur.y, cur.m + d, 1); cur = { y: t.getFullYear(), m: t.getMonth() }; D = null; render(); load(false); }
-$("#prev").onclick = () => shiftMonth(-1);
-$("#next").onclick = () => shiftMonth(1);
-const goToday = () => { const t = new Date(); if (cur.y === t.getFullYear() && cur.m === t.getMonth()) return; cur = { y: t.getFullYear(), m: t.getMonth() }; D = null; render(); load(false); };
+$("#prev").onclick = () => view === "week" ? shiftWeek(-1) : shiftMonth(-1);
+$("#next").onclick = () => view === "week" ? shiftWeek(1) : shiftMonth(1);
+const goToday = () => { if (view === "week") { const ch = setWeek(todayKey()); render(); if (ch) load(false); return; } const t = new Date(); if (cur.y === t.getFullYear() && cur.m === t.getMonth()) return; cur = { y: t.getFullYear(), m: t.getMonth() }; D = null; render(); load(false); };
 $("#ym").onclick = goToday; $("#todayBtn").onclick = goToday;
 $("#refresh").onclick = () => load(true);
-$("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; view = b.dataset.v; render(); $("#main").scrollTop = 0; });
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; view = b.dataset.v; if (view === "week") enterWeek(); render(); $("#main").scrollTop = 0; });
 let tx = null, ty = null;
 $("#main").addEventListener("touchstart", e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
 $("#main").addEventListener("touchend", e => {
   if (tx == null || view === "set") return;
   const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty; tx = null;
-  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) shiftMonth(dx < 0 ? 1 : -1);
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) (view === "week" ? shiftWeek : shiftMonth)(dx < 0 ? 1 : -1);
 }, { passive: true });
 // refetch when the app comes back to the foreground (so it always shows the current schedule)
 document.addEventListener("visibilitychange", () => { if (!document.hidden && D && Date.now() - D.at > 5 * 60e3) load(false); });
