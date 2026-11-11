@@ -563,7 +563,7 @@ function shiftView() {
   return `<div class="wk g4">${SHIFTS.map(x => `<span>${x}</span>`).join("")}</div>
   <div class="grid g4">${days.map(k => cellHTML(k, parse(k).m === cur.m, true)).join("")}</div>
   ${setupCard()}
-  ${D ? legendCard() : ""}`;
+  `;
 }
 function legendCard() {
   return `<div class="legend">
