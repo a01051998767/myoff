@@ -63,7 +63,7 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .view{padding-block:4px 28px}
 
 /* month grid */
-.wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font:700 20px/1 var(--f-text);color:var(--fg);position:sticky;top:0;z-index:5;background:var(--bg);padding-block:8px;margin-top:-4px;border-bottom:1px solid var(--line)}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font:700 16px/1 var(--f-text);color:var(--fg);position:sticky;top:0;z-index:5;background:var(--bg);padding-block:6px;margin-top:-4px;border-bottom:1px solid var(--line)}
 .wk .s0{color:var(--sun)} .wk .s6{color:var(--sat)}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);background:var(--surface);border-radius:4px}
 .cell{min-height:84px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:3px 3px 4px;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0;position:relative}
@@ -72,7 +72,12 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .grid.g4 .cell{border-right:1px solid var(--line)}
 .grid.g4 .cell:nth-child(4n){border-right:0}
 .wk.g4{grid-template-columns:repeat(4,1fr)}
-.grid.g4 .cell{min-height:62px;gap:2px}
+.grid.g4 .cell{min-height:0;gap:2px;overflow:hidden}
+.view.fit{height:100%;display:flex;flex-direction:column;padding-bottom:12px}
+.view.fit .legend{margin-top:6px}
+.view.fit .grid{flex:1;grid-auto-rows:minmax(56px,1fr)}
+.view.fit .grid.g4{grid-auto-rows:minmax(44px,1fr)}
+.view.fit .cell{min-height:0;overflow:hidden}
 .grid.g4 .cmid{flex-direction:row;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:2px 3px}
 .wdl{font-size:11px;color:var(--muted);margin-left:3px}
 .wdl.red{color:var(--sun)} .wdl.blue{color:var(--sat)}
@@ -499,7 +504,7 @@ function render() {
   dayCache.clear();
   renderHeader();
   const main = $("#main");
-  main.innerHTML = `<div class="view gut">${view === "cal" ? calView() : view === "shift" ? shiftView() : setView()}</div>`;
+  main.innerHTML = `<div class="view gut${view !== "set" ? " fit" : ""}">${view === "cal" ? calView() : view === "shift" ? shiftView() : setView()}</div>`;
   if (sel) renderSheet();
 }
 function setupCard() {
