@@ -106,7 +106,7 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .pdot.off{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--line)}
 
 /* bottom nav */
-nav.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:var(--surface);padding-block:6px 4px}
+nav.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--surface);padding-block:6px 4px}
 nav.tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:4px 0}
 nav.tabs button svg{width:24px;height:24px}
 nav.tabs button[aria-current=true]{color:var(--accent)}
@@ -187,6 +187,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:var(--
   <main id="main"></main>
   <nav class="tabs gut" id="tabs">
     <button data-v="cal" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>달력</button>
+    <button data-v="wed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 15.5h8M13.5 13l2.5 2.5-2.5 2.5"/></svg>수~화</button>
     <button data-v="shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/></svg>교대</button>
     <button data-v="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>설정</button>
   </nav>
@@ -294,10 +295,10 @@ let cur = (() => { const t = new Date(); return { y: t.getFullYear(), m: t.getMo
 let D = null;                    // loaded data for current grid: {range:[k0,k1], people:[[ev..],..], at, srcLabel:[..]}
 let loading = false, lastErr = "", calList = null;
 
-function monthDays(y, m) {
-  const first = key(y, m, 1), start = dnum(first) - dow(first);
+function monthDays(y, m, ws = 0) {        // ws: weekday the week starts on (0 = Sun, 3 = Wed)
+  const first = key(y, m, 1), off = (dow(first) - ws + 7) % 7, start = dnum(first) - off;
   const last = new Date(y, m + 1, 0).getDate();
-  const cells = Math.ceil((dow(first) + last) / 7) * 7;
+  const cells = Math.ceil((off + last) / 7) * 7;
   return Array.from({ length: cells }, (_, i) => fromNum(start + i));
 }
 
@@ -506,7 +507,7 @@ function render() {
   dayCache.clear();
   renderHeader();
   const main = $("#main");
-  main.innerHTML = `<div class="view gut${view !== "set" ? " fit" : ""}">${view === "cal" ? calView() : view === "shift" ? shiftView() : setView()}</div>`;
+  main.innerHTML = `<div class="view gut${view !== "set" ? " fit" : ""}">${view === "cal" ? calView() : view === "wed" ? calView(3) : view === "shift" ? shiftView() : setView()}</div>`;
   if (sel) renderSheet();
 }
 function setupCard() {
@@ -541,9 +542,9 @@ function cellHTML(k, inMonth, wd) {
     <span class="cbot">${dots}</span>
   </button>`;
 }
-function calView() {
-  const days = monthDays(cur.y, cur.m);
-  return `<div class="wk">${WD.map((d, i) => `<span class="s${i}">${d}</span>`).join("")}</div>
+function calView(ws = 0) {
+  const days = monthDays(cur.y, cur.m, ws);
+  return `<div class="wk">${WD.map((_, i) => (i + ws) % 7).map(i => `<span class="s${i}">${WD[i]}</span>`).join("")}</div>
   <div class="grid" id="grid">${days.map(k => cellHTML(k, parse(k).m === cur.m)).join("")}</div>
   ${setupCard()}
   ${D ? legendCard() : ""}`;
@@ -557,8 +558,8 @@ function shiftDays(y, m) {
   return Array.from({ length: end - start + 1 }, (_, i) => fromNum(start + i));
 }
 function viewRange() {
-  const a = monthDays(cur.y, cur.m), b = shiftDays(cur.y, cur.m);
-  return [a[0] < b[0] ? a[0] : b[0], a[a.length - 1] > b[b.length - 1] ? a[a.length - 1] : b[b.length - 1]];
+  const all = [...monthDays(cur.y, cur.m), ...monthDays(cur.y, cur.m, 3), ...shiftDays(cur.y, cur.m)].sort();
+  return [all[0], all[all.length - 1]];
 }
 function shiftView() {
   const days = shiftDays(cur.y, cur.m);
