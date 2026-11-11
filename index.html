@@ -63,7 +63,7 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .view{padding-block:4px 20px}
 
 /* month grid */
-.wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;color:var(--muted);padding-block:4px}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font:700 20px/1 var(--f-text);color:var(--fg);position:sticky;top:0;z-index:5;background:var(--bg);padding-block:8px;margin-top:-4px;border-bottom:1px solid var(--line)}
 .wk .s0{color:var(--sun)} .wk .s6{color:var(--sat)}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);background:var(--surface);border-radius:4px}
 .cell{min-height:84px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:3px 3px 4px;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0;position:relative}
@@ -71,7 +71,7 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .grid.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .grid.g4 .cell{border-right:1px solid var(--line)}
 .grid.g4 .cell:nth-child(4n){border-right:0}
-.wk.g4{grid-template-columns:repeat(4,1fr);font:700 20px/1 var(--f-text);color:var(--fg);position:sticky;top:0;z-index:5;background:var(--bg);padding-block:8px;margin-top:-4px;border-bottom:1px solid var(--line)}
+.wk.g4{grid-template-columns:repeat(4,1fr)}
 .grid.g4 .cell{min-height:70px}
 .wdl{font-size:11px;color:var(--muted);margin-left:3px}
 .wdl.red{color:var(--sun)} .wdl.blue{color:var(--sat)}
