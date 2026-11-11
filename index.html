@@ -81,6 +81,13 @@ main{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .cbot{display:flex;gap:3px;justify-content:center}
 .slot{font:600 10px/1.5 var(--f-num);font-variant-numeric:tabular-nums;padding:0 4px;border-radius:5px;background:var(--free-soft);color:var(--free);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .full .slot{background:var(--free);color:#fff}
+.slot.work{background:var(--line);color:var(--fg)}
+.cell .slot.work{white-space:normal;text-align:center;line-height:1.25;padding:1px 3px;word-break:keep-all}
+.legend{background:var(--surface);border-radius:14px;padding:6px 14px;margin-top:12px}
+.legend div{display:flex;align-items:center;gap:10px;padding-block:7px;font-size:13px}
+.legend div+div{border-top:1px solid var(--line)}
+.legend .k{width:64px;flex:none;display:flex;justify-content:center;gap:4px}
+.legend .k .slot{font-size:11px}
 .more{font-size:10px;color:var(--muted)}
 .pdot{width:6px;height:6px;border-radius:50%;display:inline-block}
 .pdot.off{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--line)}
@@ -468,7 +475,8 @@ function dayCalc(k) {
   const free = minus(base, all);
   const slots = free.filter(([a, b]) => b - a >= S.minH * 60);
   const full = free.length === base.length && free.every((r, i) => r[0] === base[i][0] && r[1] === base[i][1]);
-  const r = { per, free, slots, full, total: slots.reduce((s, [a, b]) => s + b - a, 0) };
+  const work = !full && !slots.length && per.every(q => q.busy.length > 0);
+  const r = { per, free, slots, full, work, total: slots.reduce((s, [a, b]) => s + b - a, 0) };
   dayCache.set(k, r);
   return r;
 }
@@ -512,10 +520,12 @@ function cellHTML(k, inMonth) {
   const p = parse(k), w = dow(k), h = holiday(k), tk = todayKey(), c = dayCalc(k);
   const cls = ["cell"]; if (!inMonth) cls.push("other"); if (k === tk) cls.push("today");
   if (c && c.full) cls.push("full");
+  if (c && c.work) cls.push("work");
   const numCls = (h && h.red) || w === 0 ? "red" : w === 6 ? "blue" : "";
   let mid = "";
   if (c) {
     if (c.full) mid = `<span class="slot">같이 쉼</span>`;
+    else if (c.work) mid = `<span class="slot work">같이 일함</span>`;
     else { mid = c.slots.slice(0, 2).map(s => `<span class="slot">${slotTxt(s)}</span>`).join(""); if (c.slots.length > 2) mid += `<span class="more">+${c.slots.length - 2}</span>`; }
   }
   const dots = c ? S.people.map((pp, i) => {
@@ -533,7 +543,18 @@ function calView() {
   return `<div class="wk">${WD.map((d, i) => `<span class="s${i}">${d}</span>`).join("")}</div>
   <div class="grid" id="grid">${days.map(k => cellHTML(k, parse(k).m === cur.m)).join("")}</div>
   ${setupCard()}
-  ${D ? `<p class="muted" style="margin:10px 2px 0">초록 칸 = 둘 다 하루 종일(${S.qe}시 이후) 일정 없음 · 칩 = 같이 비는 ${S.minH}시간 이상 · 점 = 그날 일정 있음 · ${pad(S.qs)}~${pad(S.qe)}시 제외</p>` : ""}`;
+  ${D ? legendCard() : ""}`;
+}
+function legendCard() {
+  const dots = S.people.map(p => `<i class="pdot" style="background:${esc(p.color)}"></i>`).join("");
+  const names = S.people.map(p => esc(p.name)).join("·");
+  return `<div class="legend">
+    <div><span class="k"><span class="slot" style="background:var(--free);color:#fff">같이 쉼</span></span><span>둘 다 일정이 없는 날</span></div>
+    <div><span class="k"><span class="slot">18–24</span></span><span>둘 다 비어 있는 시간 (18시~24시, ${S.minH}시간 이상만)</span></div>
+    <div><span class="k"><span class="slot work">같이 일함</span></span><span>둘 다 일정이 있어서 같이 쉴 시간이 없는 날</span></div>
+    <div><span class="k">${dots}</span><span>그날 일정이 있는 사람 (${names})</span></div>
+    <div><span class="k muted">🌙</span><span>밤 ${S.qs}시~아침 ${S.qe}시는 자는 시간이라 빼고 계산해요</span></div>
+  </div>`;
 }
 function listView() {
   const days = monthDays(cur.y, cur.m).filter(k => parse(k).m === cur.m);
@@ -543,8 +564,8 @@ function listView() {
   const hols = days.map(k => ({ k, h: holiday(k) })).filter(x => x.h && x.h.red);
   return `<div class="kpis" style="margin-top:6px">
     <div class="kpi"><b>${fullN}</b><span>같이 쉬는 날</span></div>
-    <div class="kpi"><b>${rows.reduce((s, r) => s + r.c.slots.length, 0)}</b><span>${S.minH}h+ 빈 시간</span></div>
-    <div class="kpi"><b>${Math.round(tot / 60)}</b><span>합계(시간)</span></div></div>
+    <div class="kpi"><b>${days.filter(k => dayCalc(k).work).length}</b><span>같이 일하는 날</span></div>
+    <div class="kpi"><b>${Math.round(tot / 60)}</b><span>같이 빈 시간(h)</span></div></div>
   <div class="sec"><h2>${cur.m + 1}월 같이 쉬는 시간 <small>${pad(S.qs)}~${pad(S.qe)}시 제외</small></h2>
   <div class="card">${rows.length ? rows.map(({ k, c }) => {
     const p = parse(k), w = dow(k), h = holiday(k);
@@ -640,7 +661,7 @@ function renderSheet() {
     <button class="ibtn" data-nav="-1" aria-label="전날"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="info">
       <div class="sdate ${(h && h.red) || w === 0 ? "red" : w === 6 ? "blue" : ""}">${p.m + 1}월 ${pad(p.d)}일 ${WD[w]}요일</div>
-      <div class="muted">${h ? esc(h.name) + " · " : ""}${c ? (c.full ? "둘 다 일정 없는 날" : c.slots.length ? `같이 ${hrs(c.total)}` : "같이 비는 긴 시간 없음") : ""}</div>
+      <div class="muted">${h ? esc(h.name) + " · " : ""}${c ? (c.full ? "둘 다 일정 없는 날" : c.work ? "둘 다 일하는 날" : c.slots.length ? `같이 ${hrs(c.total)}` : "같이 비는 긴 시간 없음") : ""}</div>
     </div>
     <button class="ibtn" data-nav="1" aria-label="다음날"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></button>
     <button class="mini pill" id="closeSheet">닫기</button>
