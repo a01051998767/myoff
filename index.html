@@ -207,10 +207,12 @@ const hrs = min => { const h = min / 60; return (Number.isInteger(h) ? h : h.toF
 
 /* ---------- settings (this device only) ---------- */
 const CFG = "myoff.rest.v1", TOK = "myoff.rest.tok", CACHE = "myoff.rest.cache";
+// OAuth client ID is public by design (only works from the authorized origin; not a secret).
+const DEFAULT_CLIENT_ID = "706526816720-tcjp9djh0e53pbc4vs1d3rc5s5d5p335.apps.googleusercontent.com";
 const HOLIDAY_CAL = "ko.south_korea#holiday@group.v.calendar.google.com";
 function defaults() {
   return {
-    clientId: "",
+    clientId: DEFAULT_CLIENT_ID,
     people: [
       { name: "엄지", color: "#f08a24", src: "" },     // src: "" auto | "cal:<id>" | "kw:<text>"
       { name: "도연", color: "#7c5cff", src: "" }
@@ -224,6 +226,7 @@ function defaults() {
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 let S = Object.assign(defaults(), lsGet(CFG, {}));
+if (!S.clientId) S.clientId = DEFAULT_CLIENT_ID;
 const save = () => lsSet(CFG, S);
 let tok = lsGet(TOK, null);                              // {token, exp}
 const tokOk = () => tok && tok.exp > Date.now() + 60e3;
@@ -564,8 +567,6 @@ function setView() {
   return `
   <div class="sec"><h2>구글 캘린더 <small>${tokOk() ? "연결됨" : S.clientId ? "로그인 필요" : "미설정"}</small></h2>
     <div class="card">
-      <div class="row col"><label class="l" for="cid">OAuth 클라이언트 ID</label>
-        <input type="text" id="cid" data-f="clientId" value="${esc(S.clientId)}" placeholder="123…apps.googleusercontent.com" autocomplete="off" spellcheck="false"></div>
       <div class="row"><div class="btns">
         ${tokOk() ? `<button class="btn ghost" data-act="loadCals">캘린더 목록 새로고침</button><button class="btn warn" data-act="signOut">연결 해제</button>` : `<button class="btn" data-act="connect">구글로 로그인</button>`}
       </div></div>
@@ -595,7 +596,10 @@ function setView() {
   </div></div>
   <div class="sec"><h2>예시 데이터</h2><div class="card"><div class="row"><span class="grow muted">연결 전에 가짜 일정으로 화면을 확인해요</span>
     <button class="tog ${S.demo ? "on" : ""}" data-act="demoToggle">${S.demo ? "켜짐" : "꺼짐"}</button></div></div></div>
-  ${S.clientId ? `<div class="sec"><h2>연결 방법 다시 보기</h2>${guide()}</div>` : ""}
+  <details class="sec"><summary class="muted">고급 · 구글 클라이언트 ID 변경</summary>
+    <div class="card" style="margin-top:8px"><div class="row col"><label class="l" for="cid">OAuth 클라이언트 ID <small>(비워두면 기본값)</small></label>
+      <input type="text" id="cid" data-f="clientId" value="${S.clientId === DEFAULT_CLIENT_ID ? "" : esc(S.clientId)}" placeholder="기본값 사용 중" autocomplete="off" spellcheck="false"></div></div>
+    ${guide()}</details>
   <p class="muted" style="margin-top:18px">일정은 이 기기 브라우저에서 구글로 직접 읽어오고(읽기 전용), 어디에도 보내지 않아요.</p>`;
 }
 function guide() {
@@ -680,6 +684,7 @@ $("#main").addEventListener("change", e => {
     const f = t.dataset.f;
     if (f === "minH") S.minH = Math.max(0.5, Math.min(24, parseFloat(t.value) || 4));
     else if (f === "qs" || f === "qe") S[f] = +t.value;
+    else if (f === "clientId") S.clientId = t.value.trim() || DEFAULT_CLIENT_ID;
     else S[f] = t.value.trim();
     if (f === "clientId") { tok = null; localStorage.removeItem(TOK); calList = null; }
     save(); render(); return;
